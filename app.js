@@ -37,7 +37,7 @@ const gameState = {
     coinsPerTap: 2,
     coinsPerSecond: 2,
     taps: 0,
-    timeLeft: 60,
+    timeLeft: 11,
     incomeMultiplier: 1, // For Crowd Boost effect
     skills: {
         tap: { level: 0, cooldownEndTime: 0, multiplier: 1 }, // Battle Spirit: ×1.5, ×2, ×3, ×4
@@ -1682,19 +1682,14 @@ function hideSuccessScreen() {
 
 // Get app store URL based on user agent
 function getAppStoreUrl() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
     
-    // Check if Android
+    // Check if Android (more comprehensive detection)
     if (/android/i.test(userAgent)) {
         return 'https://play.google.com/store/apps/details?id=com.nexters.herowars&hl=en';
     }
     
-    // Check if iOS
-    if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-        return 'https://apps.apple.com/us/app/hero-wars-alliance-fantasy/id1158967485';
-    }
-    
-    // Default to iOS App Store
+    // Default to iOS App Store (Hero Wars: Alliance)
     return 'https://apps.apple.com/us/app/hero-wars-alliance-fantasy/id1158967485';
 }
 
