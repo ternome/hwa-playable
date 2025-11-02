@@ -1,6 +1,18 @@
 // Game State
 const MAX_LEVEL = 5;
-const EXPERIENCE_PER_LEVEL = 30;
+// Progressive experience requirements: Level 1→2, 2→3, 3→4, 4→5
+const EXPERIENCE_REQUIREMENTS = {
+    1: 15,  // Level 1 → 2
+    2: 25,  // Level 2 → 3
+    3: 70,  // Level 3 → 4
+    4: 110  // Level 4 → 5
+};
+
+// Get experience required for next level
+function getExperienceForLevel(currentLevel) {
+    if (currentLevel >= MAX_LEVEL) return 999999;
+    return EXPERIENCE_REQUIREMENTS[currentLevel] || 999999;
+}
 
 // Statistics constants
 const TOTAL_PLAYERS = 487543;
@@ -21,7 +33,7 @@ const gameState = {
     coins: 1,
     level: 1,
     experience: 0,
-    experienceToNextLevel: EXPERIENCE_PER_LEVEL,
+    experienceToNextLevel: getExperienceForLevel(1),
     coinsPerTap: 2,
     coinsPerSecond: 2,
     taps: 0,
@@ -866,12 +878,8 @@ function levelUp() {
     gameState.level++;
     gameState.experience = 0;
     
-    // Always need 5 clicks for next level (or no next level if at max)
-    if (gameState.level < MAX_LEVEL) {
-        gameState.experienceToNextLevel = EXPERIENCE_PER_LEVEL;
-    } else {
-        gameState.experienceToNextLevel = 999999; // Effectively infinite
-    }
+    // Set experience requirement for next level (progressive system)
+    gameState.experienceToNextLevel = getExperienceForLevel(gameState.level);
     
     // Don't modify base coinsPerTap and coinsPerSecond - they are now modified by skills and bonuses
     // Base values stay constant, bonuses come from skills and hero evolution
@@ -884,13 +892,90 @@ function levelUp() {
     
     // Visual feedback for level up
     showLevelUpEffect();
+    
+    // Launch powerful emoji burst
+    launchEmojis(true); // true = level up burst mode
 }
 
 // Launch emojis from center of screen
-function launchEmojis() {
+// isLevelUpBurst: if true, launches powerful celebratory burst (20-30 emojis)
+function launchEmojis(isLevelUpBurst = false) {
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
     
+    // Level up burst mode - powerful celebratory explosion
+    if (isLevelUpBurst) {
+        const emojiCount = 20 + Math.floor(Math.random() * 11); // 20-30 emojis
+        const levelUpEmojis = ['🎉', '⭐', '🏆', '💎', '✨', '🔥']; // Celebratory emojis
+        const sizes = [30, 35, 40, 45, 50]; // Larger sizes
+        const animationDuration = 2.0 + Math.random() * 0.5; // 2.0-2.5 seconds
+        const distanceMin = 200;
+        const distanceMax = 500; // Wider spread
+        const rotationMin = 360;
+        const rotationMax = 1440; // 1-4 full rotations
+        
+        // Launch emojis in all directions
+        for (let i = 0; i < emojiCount; i++) {
+            const emoji = levelUpEmojis[Math.floor(Math.random() * levelUpEmojis.length)];
+            const size = sizes[Math.floor(Math.random() * sizes.length)];
+            const startSize = size;
+            const endSize = size * 2;
+            
+            const angle = Math.random() * 360;
+            const distance = distanceMin + Math.random() * (distanceMax - distanceMin);
+            const radians = (angle * Math.PI) / 180;
+            const endX = centerX + Math.cos(radians) * distance;
+            const endY = centerY + Math.sin(radians) * distance;
+            
+            const rotationDirection = Math.random() > 0.5 ? 1 : -1;
+            const rotationSpeed = rotationMin + Math.random() * (rotationMax - rotationMin);
+            
+            const emojiElement = document.createElement('div');
+            emojiElement.className = 'flying-emoji';
+            emojiElement.textContent = emoji;
+            emojiElement.style.cssText = `
+                position: fixed;
+                left: ${centerX}px;
+                top: ${centerY}px;
+                font-size: ${startSize}px;
+                pointer-events: none;
+                z-index: 0;
+                transform: translate(-50%, -50%);
+            `;
+            
+            const animationId = `levelUpEmoji_${Date.now()}_${i}`;
+            const style = document.createElement('style');
+            const translateX = endX - centerX;
+            const translateY = endY - centerY;
+            style.textContent = `
+                @keyframes ${animationId} {
+                    0% {
+                        transform: translate(-50%, -50%) translate(0, 0) scale(1) rotate(0deg);
+                        opacity: 0.3;
+                    }
+                    100% {
+                        transform: translate(-50%, -50%) translate(${translateX}px, ${translateY}px) scale(${endSize / startSize}) rotate(${rotationDirection * rotationSpeed}deg);
+                        opacity: 1;
+                    }
+                }
+                .flying-emoji-${animationId} {
+                    animation: ${animationId} ${animationDuration}s ease-out forwards;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            emojiElement.classList.add(`flying-emoji-${animationId}`);
+            document.body.appendChild(emojiElement);
+            
+            setTimeout(() => {
+                emojiElement.remove();
+                style.remove();
+            }, animationDuration * 1000);
+        }
+        return; // Exit early for level up burst
+    }
+    
+    // Regular emoji launch (existing logic)
     // Get level-based parameters
     const level = Math.min(gameState.level, MAX_LEVEL);
     let emojiCountMin, emojiCountMax, animationDuration, distanceMin, distanceMax, rotationMin, rotationMax;
@@ -1577,7 +1662,7 @@ function resetGameCompletely() {
     gameState.coins = 0;
     gameState.level = 1;
     gameState.experience = 0;
-    gameState.experienceToNextLevel = EXPERIENCE_PER_LEVEL;
+    gameState.experienceToNextLevel = getExperienceForLevel(1);
     gameState.coinsPerTap = 2;
     gameState.coinsPerSecond = 2;
     gameState.taps = 0;
@@ -1646,7 +1731,7 @@ function resetProgress() {
         gameState.coins = 0;
         gameState.level = 1;
         gameState.experience = 0;
-        gameState.experienceToNextLevel = EXPERIENCE_PER_LEVEL;
+        gameState.experienceToNextLevel = getExperienceForLevel(1);
         gameState.coinsPerTap = 2;
         gameState.coinsPerSecond = 2;
         gameState.taps = 0;
