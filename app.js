@@ -21,7 +21,7 @@ const gameState = {
     coinsPerTap: 1,
     coinsPerSecond: 1,
     taps: 0,
-    timeLeft: 15,
+    timeLeft: 60,
     incomeMultiplier: 1, // For Crowd Boost effect
     skills: {
         tap: { cooldownEndTime: 0 },
