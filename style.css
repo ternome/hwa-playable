@@ -1,0 +1,682 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: "Roboto Condensed", -apple-system, BlinkMacSystemFont, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #1E2228 url('assets/bg-base.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #ffffff;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+}
+
+.game-container {
+    width: 100%;
+    height: 100vh;
+    max-width: calc(100vh * 9 / 16);
+    display: flex;
+    flex-direction: column;
+    background: #1E2228 url(assets/bg-base.png);
+    background-size: cover;
+    position: relative;
+    overflow: hidden;
+    padding-top: 70px;
+    transition: background-color 0.5s ease-out;
+}
+
+.game-container.red-flash {
+    background: rgba(220, 38, 38, 0.6);
+}
+
+/* Top Section */
+.top-section {
+    padding: 15px 20px;
+    flex-shrink: 0;
+}
+
+.stats-bar {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.trophy-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #ffd700;
+    flex: 1;
+}
+
+.reset-button {
+    background: #dc2626;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.reset-button:hover {
+    background: #b91c1c;
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
+}
+
+.reset-button:active {
+    transform: scale(0.95);
+}
+
+.trophy-icon {
+    font-size: 16px;
+}
+
+.level-container {
+    margin-bottom: 15px;
+}
+
+.progress-bar {
+    position: relative;
+    width: 100%;
+    height: 20px;
+    border-radius: 20px;
+    background-color: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #504EDC 0%, #BB5EC4 100%);
+}
+
+.level-label {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    z-index: 1;
+    color: #FFFDED;
+    font-family: "Roboto Condensed", -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 500;
+    text-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.30);
+    white-space: nowrap;
+}
+
+.currency-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.currency-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 54px;
+    font-weight: 900;
+}
+
+.coin-icon {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+}
+
+.income-stats {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 14px;
+}
+
+.income-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #FFFDED;
+}
+
+.income-item .income-suffix {
+    opacity: 0.4;
+}
+
+/* Middle Section */
+.middle-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    touch-action: manipulation;
+    min-height: 0;
+    background: transparent;
+}
+
+.character-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.pedestal {
+    width: 80%;
+    height: auto;
+    object-fit: contain;
+    z-index: 1;
+    transition: transform 0.1s ease;
+    position: relative;
+    transform: translate(0, 60%);
+}
+
+.pedestal.tap-press {
+    transform: translate(0, 65%);
+}
+
+.character {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-40%, -10px);
+    z-index: 2;
+    transition: transform 0.1s ease;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.character.tap-press {
+    transform: translate(-40%, -5px);
+}
+
+.character-body {
+    width: 160%;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+    position: relative;
+}
+
+/* Bottom Section */
+.bottom-section {
+    padding: 15px 20px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.timer-container {
+    margin-bottom: 15px;
+    font-size: 16px;
+    text-align: left;
+    width: 100%;
+}
+
+.timer-container.hidden {
+    opacity: 0;
+}
+
+.timer-label {
+    opacity: 0.4;
+}
+
+#timer-value {
+    color: #FFFDED;
+}
+
+.center-countdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 350px;
+    font-weight: 900;
+    color: #FFFDED;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.center-countdown.visible {
+    opacity: 0.1;
+    animation: countdownPulse 1s ease-out;
+}
+
+@keyframes countdownPulse {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    100% {
+        opacity: 0.1;
+        transform: translate(-50%, -50%) scale(1.5);
+    }
+}
+
+.skills-grid {
+    display: flex;
+    width: 353px;
+    align-items: center;
+    align-content: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.skill-card {
+    display: flex;
+    width: 174.5px;
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    flex-shrink: 0;
+    border-radius: 19px;
+    background: #3C4046;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.skill-card:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+.skill-card:active {
+    transform: translateY(0);
+}
+
+.skill-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.skill-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.skill-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.skill-effect {
+    font-size: 12px;
+    color: #4ade80;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.skill-cost {
+    font-size: 12px;
+    color: #ffd700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.coin-icon-small {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.skill-button {
+    display: none;
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #dc2626;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: toastSlideIn 0.3s ease-out, toastSlideOut 0.3s ease-in 2.7s forwards;
+    pointer-events: none;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+
+    
+    .coin-icon {
+        font-size: 28px;
+    }
+    
+    .character-body {
+        font-size: 80px;
+    }
+    
+    .skill-card {
+        padding: 10px;
+    }
+    
+    .skill-button {
+        width: 40px;
+        height: 40px;
+        font-size: 10px;
+    }
+}
+
+/* Landscape orientation warning */
+@media (orientation: landscape) and (max-height: 500px) {
+    .game-container {
+        max-width: 100%;
+    }
+}
+
+/* Success Screen */
+.success-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.success-screen.hidden {
+    display: none;
+}
+
+.success-content {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.try-again-button {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    color: #FFFDED;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 8px;
+    transition: opacity 0.2s;
+}
+
+.try-again-button:hover {
+    opacity: 0.7;
+}
+
+.try-again-icon {
+    font-size: 20px;
+}
+
+.won-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.won-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.won-trophy-icon {
+    font-size: 24px;
+}
+
+.won-title {
+    color: #FFFDED;
+    font-size: 28px;
+    font-weight: 900;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.won-coins {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.won-coin-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.won-coins-amount {
+    color: #FFFDED;
+    font-size: 42px;
+    font-weight: 900;
+}
+
+.won-coins-value {
+    color: #FFFDED;
+    font-size: 16px;
+    opacity: 0.7;
+    margin-top: -10px;
+}
+
+.treasure-chest-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.treasure-chest-image {
+    width: 200px;
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+    animation: chestPulse 2s ease-in-out infinite;
+}
+
+@keyframes chestPulse {
+    0%, 100% {
+        opacity: 0.9;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+.bonus-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    position: relative;
+}
+
+.bonus-badge {
+    background: #504EDC;
+    color: #FFFDED;
+    padding: 6px 16px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.bonus-text {
+    color: #FFFDED;
+    font-size: 14px;
+    text-align: center;
+}
+
+.character-avatar {
+    margin-top: 10px;
+}
+
+.avatar-image {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.claim-button {
+    width: 100%;
+    max-width: 300px;
+    padding: 16px 24px;
+    background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+    border: 2px solid #86efac;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 900;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
+}
+
+.claim-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(74, 222, 128, 0.4);
+}
+
+.claim-button:active {
+    transform: translateY(0);
+}
+
+.success-logo {
+    margin-top: 20px;
+    color: #FFFDED;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0.7;
+}
+
+/* Hide game container when success screen is shown */
+.success-screen:not(.hidden) ~ .game-container {
+    display: none;
+}
+
+/* Onboarding Hand Animation */
+.onboarding-hand {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.onboarding-hand.hidden {
+    display: none;
+}
+
+.onboarding-hand canvas {
+    position: absolute;
+    pointer-events: none;
+}
+
+.fallback-hand {
+    font-size: 80px;
+    animation: handPoint 1.5s ease-in-out infinite;
+    transform-origin: bottom center;
+}
+
+@keyframes handPoint {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-20px) scale(1.1);
+        opacity: 1;
+    }
+}
+

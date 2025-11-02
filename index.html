@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tap Game - mini game for earning coins">
+    <meta name="theme-color" content="#2a2a2a">
+    <title>Tap Game - PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <!-- Spine Animation Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-spine@3.0.20/dist/pixi-spine.umd.js"></script>
+</head>
+<body>
+    <div id="center-countdown" class="center-countdown"></div>
+    
+    <!-- Onboarding Hand Animation -->
+    <div id="onboarding-hand" class="onboarding-hand hidden"></div>
+    
+    <!-- Success Screen -->
+    <div id="success-screen" class="success-screen hidden">
+        <div class="success-content">
+            <!-- Try again button -->
+            <button id="try-again-button" class="try-again-button">
+                <span class="try-again-icon">↻</span>
+                <span class="try-again-text">Try again</span>
+            </button>
+            
+            <!-- YOU WON section -->
+            <div class="won-section">
+                <div class="won-header">
+                    <span class="won-trophy-icon">🏆</span>
+                    <h2 class="won-title">YOU WON</h2>
+                </div>
+                <div class="won-coins">
+                    <img class="won-coin-icon" src="assets/coin.png" alt="Coin" />
+                    <span id="won-coins-amount" class="won-coins-amount">0</span>
+                    <div class="won-coins-value">~<span id="won-coins-dollar">0</span>$</div>
+                </div>
+            </div>
+            
+            <!-- Treasure chest image -->
+            <div class="treasure-chest-container">
+                <img class="treasure-chest-image" src="assets/chest.png" alt="Treasure Chest" />
+            </div>
+            
+            <!-- Bonus Prize section -->
+            <div class="bonus-section">
+                <div class="bonus-badge">Bonus Prize</div>
+                <div class="bonus-text">
+                    You're better than <span id="bonus-percent-text">17</span>% of players.
+                </div>
+                <div class="character-avatar">
+                    <img id="success-character-img" class="avatar-image" src="assets/bonus-prize.png" alt="Bonus Prize" />
+                </div>
+            </div>
+            
+            <!-- Claim button -->
+            <button id="claim-button" class="claim-button">CLAIM ALL REWARDS IN GAME</button>
+            
+            <!-- Logo -->
+            <div class="success-logo">HERO WARS ALLIANCE</div>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <!-- Top Section -->
+        <div class="top-section">
+            <div class="stats-bar">
+                <div class="trophy-text">
+                    <span class="trophy-icon">🏆</span>
+                    <span id="percent-text">You're better than 17% of players</span>
+                </div>
+            </div>
+            
+            <div class="level-container">
+                <div class="progress-bar">
+                    <div class="level-label">Level <span id="current-level">1</span></div>
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+            
+            <div class="currency-container">
+                <div class="currency-display">
+                    <img class="coin-icon" src="assets/coin.png" alt="Coin" />
+                    <span id="coins-display">0</span>
+                </div>
+                <div class="income-stats">
+                    <div class="income-item">
+                        <span>+<span id="coins-per-tap">1</span> <span class="income-suffix">per tap</span></span>
+                    </div>
+                    <div class="income-item">
+                        <span>+<span id="coins-per-sec">0</span> <span class="income-suffix">per sec</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Middle Section - Character -->
+        <div class="middle-section">
+            <div class="character-container">
+                <img class="pedestal" src="assets/pedestal.png" alt="Pedestal" />
+                <div class="character" id="character">
+                    <img id="character-img" class="character-body" src="assets/HeroState_1.png" alt="Hero Level 1" />
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Section - Skills -->
+        <div class="bottom-section">
+            <div class="timer-container">
+                <span id="timer-text"><span class="timer-label">Time left:</span> <span id="timer-value">60</span>s</span>
+            </div>
+            <div class="skills-grid">
+                <div class="skill-card" data-skill="tap">
+                    <div class="skill-info">
+                        <div class="skill-title">Iron Skies</div>
+                        <div class="skill-effect">
+                            <img class="coin-icon-small" src="assets/coin.png" alt="Coin" />
+                            <span>+<span class="skill-value">1</span> per tap</span>
+                        </div>
+                        <div class="skill-cost">
+                            <img class="coin-icon-small" src="assets/coin.png" alt="Coin" />
+                            <span class="cost-value">100</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="skill-card" data-skill="passive">
+                    <div class="skill-info">
+                        <div class="skill-title">Hero's Focus</div>
+                        <div class="skill-effect">
+                            <img class="coin-icon-small" src="assets/coin.png" alt="Coin" />
+                            <span>+<span class="skill-value">7</span> per sec</span>
+                        </div>
+                        <div class="skill-cost">
+                            <img class="coin-icon-small" src="assets/coin.png" alt="Coin" />
+                            <span class="cost-value">150</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="skill-card" data-skill="time1">
+                    <div class="skill-info">
+                        <div class="skill-title">Heroic Delay</div>
+                        <div class="skill-effect">
+                            <span>+<span class="skill-value">10</span> sec</span>
+                        </div>
+                        <div class="skill-cost">
+                            <img class="coin-icon-small" src="assets/coin.png" alt="Coin" />
+                            <span class="cost-value">100</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="skill-card" data-skill="time2">
+                    <div class="skill-info">
+                        <div class="skill-title">Heroic Delay</div>
+                        <div class="skill-effect">
+                            <span>+<span class="skill-value">10</span> sec</span>
+                        </div>
+                        <div class="skill-cost">
+                            <img class="coin-icon-small" src="assets/coin.png" alt="Coin" />
+                            <span class="cost-value">100</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+    <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
+
