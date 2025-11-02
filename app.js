@@ -2,6 +2,10 @@
 const MAX_LEVEL = 5;
 const EXPERIENCE_PER_LEVEL = 30;
 
+// Statistics constants
+const TOTAL_PLAYERS = 487543;
+const TOP_1_PERCENT_THRESHOLD = 330;
+
 // Skill cooldown durations (in seconds)
 const SKILL_COOLDOWNS = {
     tap: 3,
@@ -91,6 +95,43 @@ function formatNumber(num) {
 }
 
 // Update character image based on level
+// Calculate player percentile ranking based on tap count
+// Uses power law distribution where 330+ taps = top 1%
+// Returns percentile (0.0 = best, 1.0 = worst)
+function calculatePlayerPercentile(taps, totalPlayers = TOTAL_PLAYERS) {
+    // Power law: most players have low taps, few have high taps
+    // 330+ taps = top 1%
+    const topThreshold = TOP_1_PERCENT_THRESHOLD;
+    
+    if (taps === 0) {
+        return 1.0; // Worst possible (0 taps = 100th percentile = bottom)
+    }
+    
+    if (taps >= topThreshold) {
+        // Top 1%: further calculation for fine-grained ranking
+        const excessTaps = taps - topThreshold;
+        // Diminishing returns: each additional tap above 330 reduces percentile slightly
+        // Base percentile for 330 taps is 0.01 (top 1%)
+        const top1Percentile = 0.01 - (excessTaps / 100000);
+        return Math.max(0.0001, Math.min(0.01, top1Percentile));
+    }
+    
+    // Below top threshold: use power law
+    // Invert the logic: we want LOW taps = HIGH percentile (worse), HIGH taps = LOW percentile (better)
+    // Normalized taps: 0 = worst, 1 = best (at threshold)
+    const normalizedTaps = taps / topThreshold;
+    
+    // Power law curve: lower exponent makes progression smoother
+    // We want: taps=1 → percentile ~0.99, taps=330 → percentile ~0.01
+    // Formula: percentile = 1 - (normalizedTaps^power) * 0.99
+    // This gives: taps=0 → 1.0, taps=330 → 0.01
+    const power = 1.8; // Controls curve steepness
+    const percentile = 1.0 - (Math.pow(normalizedTaps, power) * 0.99);
+    
+    // Ensure percentile is between 0.01 (top 1%) and 1.0 (bottom)
+    return Math.min(1.0, Math.max(0.01, percentile));
+}
+
 function updateCharacterImage() {
     const characterImg = document.getElementById('character-img');
     if (characterImg) {
@@ -207,9 +248,10 @@ function updateUI() {
         }
     }
     
-    // Update percent text (mock calculation based on taps)
-    const mockPercent = Math.min(100, Math.floor(gameState.taps / 100));
-    document.getElementById('percent-text').textContent = `You're better than ${Math.max(17, 100 - mockPercent)}% of players`;
+    // Update percent text using realistic statistics calculation
+    const percentile = calculatePlayerPercentile(gameState.taps);
+    const betterThanPercent = Math.round((1 - percentile) * 100);
+    document.getElementById('percent-text').textContent = `You're better than ${betterThanPercent}% of players`;
     
     // Update character image
     updateCharacterImage();
@@ -1462,10 +1504,12 @@ function showSuccessScreen() {
         wonCoinsDollar.textContent = dollarValue.toFixed(2);
     }
     
-    // Calculate mock percent (same as in-game)
+    // Calculate absolute number of players using realistic statistics
     if (bonusPercentText) {
-        const mockPercent = Math.min(100, Math.floor(gameState.taps / 100));
-        bonusPercentText.textContent = 100 - mockPercent;
+        const percentile = calculatePlayerPercentile(gameState.taps);
+        const betterThanPercent = (1 - percentile) * 100;
+        const playersBetterThan = Math.floor(TOTAL_PLAYERS * (betterThanPercent / 100));
+        bonusPercentText.textContent = formatNumber(playersBetterThan);
     }
     
     // Update taps count

@@ -600,7 +600,7 @@ body {
 }
 
 .try-again-button {
-    align-self: flex-start;
+    align-self: center;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -728,6 +728,7 @@ body {
 }
 
 .bonus-badge {
+    display: none;
     background: #504EDC;
     color: #FFFDED;
     padding: 6px 16px;
@@ -737,12 +738,15 @@ body {
 }
 
 .bonus-text {
-    color: #FFFDED;
-    font-size: 14px;
+    color: #ffd700;
+    font-size: 40px;
+    font-weight: bold;
     text-align: center;
+    text-shadow: 0 0 20px #ffd700;
 }
 
 .character-avatar {
+    display: none;
     margin-top: 10px;
 }
 
