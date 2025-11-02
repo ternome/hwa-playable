@@ -1,4 +1,5 @@
-const CACHE_NAME = 'tap-game-v1';
+const CACHE_VERSION = 'v2'; // Увеличивайте при каждом деплое
+const CACHE_NAME = `tap-game-${CACHE_VERSION}`;
 const urlsToCache = [
   './',
   './index.html',
@@ -9,30 +10,12 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Немедленно активировать новый SW
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache');
+        console.log('Opened cache', CACHE_NAME);
         return cache.addAll(urlsToCache);
-      })
-  );
-});
-
-// Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).catch(() => {
-          // If fetch fails and it's a navigation request, return index.html
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
       })
   );
 });
@@ -49,7 +32,36 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      return self.clients.claim(); // Немедленно взять контроль
     })
+  );
+});
+
+// Fetch event - Network First стратегия
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Если сетевой запрос успешен, обновляем кэш
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
+        return response;
+      })
+      .catch(() => {
+        // Если сеть недоступна, берем из кэша
+        return caches.match(event.request).then((response) => {
+          if (response) {
+            return response;
+          }
+          // Если это навигация и ничего нет в кэше
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+        });
+      })
   );
 });
 

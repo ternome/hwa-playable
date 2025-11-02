@@ -1,7 +1,7 @@
 {
-  "name": "Tap Game - PWA",
-  "short_name": "Tap Game",
-  "description": "Mini tap game for earning coins",
+  "name": "Hero Wars: TapTap! - Epic Tap Adventure",
+  "short_name": "Hero Wars: TapTap!",
+  "description": "Join the epic battle! Tap as fast as you can, collect coins, upgrade your hero, and master powerful skills. Compete against time and maximize your score in this thrilling tap adventure game!",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#2a2a2a",
@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "assets/appicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "assets/appicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

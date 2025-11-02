@@ -3,12 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Tap Game - mini game for earning coins">
+    
+    <!-- Primary Meta Tags -->
+    <title>Hero Wars: TapTap! - Epic Tap Adventure</title>
+    <meta name="title" content="Hero Wars: TapTap! - Epic Tap Adventure">
+    <meta name="description" content="Join the epic battle in Hero Wars: TapTap! Tap as fast as you can, collect coins, upgrade your hero, and master powerful skills. Compete against time and maximize your score in this thrilling tap adventure game!">
+    <meta name="keywords" content="Hero Wars, TapTap, tap game, adventure game, hero wars game, idle game, tap adventure">
+    <meta name="author" content="Hero Wars">
     <meta name="theme-color" content="#2a2a2a">
-    <title>Tap Game - PWA</title>
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ternome.github.io/hwa-playable/">
+    <meta property="og:title" content="Hero Wars: TapTap! - Epic Tap Adventure">
+    <meta property="og:description" content="Join the epic battle in Hero Wars: TapTap! Tap as fast as you can, collect coins, upgrade your hero, and master powerful skills. Compete against time and maximize your score!">
+    <meta property="og:image" content="https://ternome.github.io/hwa-playable/assets/ogimage.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Hero Wars: TapTap!">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://ternome.github.io/hwa-playable/">
+    <meta property="twitter:title" content="Hero Wars: TapTap! - Epic Tap Adventure">
+    <meta property="twitter:description" content="Join the epic battle in Hero Wars: TapTap! Tap as fast as you can, collect coins, upgrade your hero, and master powerful skills. Compete against time and maximize your score!">
+    <meta property="twitter:image" content="https://ternome.github.io/hwa-playable/assets/ogimage.png">
+    
+    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="assets/appicon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hero Wars: TapTap!">
     <!-- Spine Animation Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pixi-spine@3.0.20/dist/pixi-spine.umd.js"></script>
@@ -169,7 +196,13 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('Service Worker registered'))
+                    .then(reg => {
+                        console.log('Service Worker registered');
+                        // Проверять обновления каждые 60 секунд
+                        setInterval(() => {
+                            reg.update();
+                        }, 60000);
+                    })
                     .catch(err => console.log('Service Worker registration failed'));
             });
         }
