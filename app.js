@@ -34,6 +34,10 @@ const gameState = {
 // Track if game has started (first tap occurred)
 let gameStarted = false;
 
+// Motivational tips timer
+let lastMotivationalTipTime = 0;
+const MOTIVATIONAL_TIP_INTERVAL = 10000; // Show tip every 10 seconds
+
 // Spine animation variables
 let handApp = null;
 let handSpine = null;
@@ -1136,6 +1140,23 @@ levelUpStyle.textContent = `
 `;
 document.head.appendChild(levelUpStyle);
 
+// Motivational tips array
+const MOTIVATIONAL_TIPS = [
+    "⚡ Speed up, valuable rewards ahead!",
+    "👆 Use two fingers, it's faster!",
+    "🔥 Keep tapping! Every tap counts!",
+    "💪 You've got this! Push harder!",
+    "🚀 Accelerate! Time is running out!",
+    "⭐ Don't slow down now! Great rewards await!",
+    "🎯 Focus and tap faster!",
+    "💎 The faster you tap, the more you earn!",
+    "⚡ Speed = Success! Keep going!",
+    "🔥 You're too slow! Tap faster!",
+    "👆 Use both hands for maximum speed!",
+    "💪 Challenge yourself! Tap at maximum speed!",
+    "🚀 Acceleration is key! Don't stop now!"
+];
+
 // Show toast notification
 function showToast(message) {
     // Remove existing toast if any
@@ -1146,6 +1167,25 @@ function showToast(message) {
     
     const toast = document.createElement('div');
     toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Remove toast after animation
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Show motivational toast (yellow, top position)
+function showMotivationalToast(message) {
+    // Remove existing motivational toast if any
+    const existingToast = document.querySelector('.motivational-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'motivational-toast';
     toast.textContent = message;
     document.body.appendChild(toast);
     
@@ -1323,6 +1363,7 @@ function generatePassiveCoins() {
 let lastSecond = -1;
 let lastFrameTime = null;
 let musicStopped = false; // Track if music was stopped for last 10 seconds
+let finalCountdownShown = false; // Track if final countdown toast was shown
 
 function updateTimer() {
     // Don't update timer until game has started
@@ -1331,6 +1372,7 @@ function updateTimer() {
     }
     
     const now = performance.now();
+    const nowTimestamp = Date.now();
     
     if (lastFrameTime === null) {
         lastFrameTime = now;
@@ -1339,6 +1381,13 @@ function updateTimer() {
     
     const deltaTime = (now - lastFrameTime) / 1000; // Convert to seconds
     lastFrameTime = now;
+    
+    // Show motivational tip every 10 seconds (but not in last 10 seconds)
+    if (gameState.timeLeft > 10 && (nowTimestamp - lastMotivationalTipTime) >= MOTIVATIONAL_TIP_INTERVAL) {
+        const randomTip = MOTIVATIONAL_TIPS[Math.floor(Math.random() * MOTIVATIONAL_TIPS.length)];
+        showMotivationalToast(randomTip);
+        lastMotivationalTipTime = nowTimestamp;
+    }
     
     if (gameState.timeLeft > 0) {
         gameState.timeLeft -= deltaTime; // Decrease by actual time elapsed
@@ -1352,6 +1401,12 @@ function updateTimer() {
         const currentSecond = Math.floor(gameState.timeLeft);
         if (gameState.timeLeft <= 10 && currentSecond !== lastSecond) {
             lastSecond = currentSecond;
+            
+            // Show final countdown toast when first hitting 10 seconds
+            if (!finalCountdownShown && gameState.timeLeft <= 10 && gameState.timeLeft > 9) {
+                showMotivationalToast("🔥 Final 10 seconds. FASTER!");
+                finalCountdownShown = true;
+            }
             
             const gameContainer = document.querySelector('.game-container');
             if (gameContainer) {
@@ -1498,6 +1553,10 @@ function resetGameCompletely() {
     lastFrameTime = null;
     lastSecond = -1;
     musicStopped = false;
+    finalCountdownShown = false;
+    
+    // Reset motivational tips timer
+    lastMotivationalTipTime = 0;
     
     // Stop background music
     if (backgroundMusic && !backgroundMusic.paused) {
@@ -1544,14 +1603,14 @@ function resetProgress() {
         gameState.level = 1;
         gameState.experience = 0;
         gameState.experienceToNextLevel = EXPERIENCE_PER_LEVEL;
-        gameState.coinsPerTap = 1;
-        gameState.coinsPerSecond = 0;
+        gameState.coinsPerTap = 2;
+        gameState.coinsPerSecond = 2;
         gameState.taps = 0;
         gameState.timeLeft = 60;
         gameState.incomeMultiplier = 1;
         gameState.skills = {
-            tap: { cooldownEndTime: 0 },
-            passive: { cooldownEndTime: 0 },
+            tap: { level: 0, cooldownEndTime: 0, multiplier: 1 },
+            passive: { level: 0, cooldownEndTime: 0 },
             time1: { cooldownEndTime: 0 },
             crowdboost: { cooldownEndTime: 0, activeEndTime: 0 }
         };
@@ -1562,6 +1621,11 @@ function resetProgress() {
         // Reset timer frame time
         lastFrameTime = null;
         lastSecond = -1;
+        musicStopped = false;
+        finalCountdownShown = false;
+        
+        // Reset tap speed tracking
+        lastMotivationalTipTime = 0;
         
         // Stop background music
         if (backgroundMusic && !backgroundMusic.paused) {
