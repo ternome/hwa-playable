@@ -37,7 +37,7 @@ const gameState = {
     coinsPerTap: 2,
     coinsPerSecond: 2,
     taps: 0,
-    timeLeft: 11,
+    timeLeft: 60,
     incomeMultiplier: 1, // For Crowd Boost effect
     skills: {
         tap: { level: 0, cooldownEndTime: 0, multiplier: 1 }, // Battle Spirit: ×1.5, ×2, ×3, ×4
