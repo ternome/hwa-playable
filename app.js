@@ -242,9 +242,9 @@ function updateSkillCards() {
                     }
                 }
             } else if (skillKey === 'passive') {
-                // Hero's Focus: show passive income (progressive squaring)
+                // Hero's Focus: show passive income (power of 10 progression)
                 if (skillValue) {
-                    if (skill.level > 0) {
+                    if (skill.level > 0 && skill.level <= 4) {
                         const passiveBonus = getHeroFocusPassiveBonus(skill.level);
                         skillValue.textContent = formatNumber(passiveBonus);
                     } else {
@@ -269,7 +269,15 @@ function updateSkillCards() {
             
             card.classList.remove('skill-ready', 'skill-cooldown', 'skill-active');
             
-            if (isOnCooldown) {
+            // Hero's Focus at max level (4) should look like cooldown state
+            if (skillKey === 'passive' && skill.level >= 4) {
+                card.classList.add('skill-cooldown');
+                if (readyButton) {
+                    readyButton.textContent = 'MAX';
+                    readyButton.style.opacity = '0.7';
+                    readyButton.style.display = 'flex';
+                }
+            } else if (isOnCooldown) {
                 card.classList.add('skill-cooldown');
                 if (cooldownText) {
                     cooldownText.textContent = `Cooldown ${Math.ceil(cooldownRemaining / 1000)}s`;
@@ -1145,30 +1153,18 @@ const SKILL_EFFECTS = {
     passive: [10, 20, 40, 80] // Hero's Focus base passive income
 };
 
-// Calculate Battle Spirit multiplier (squared progression up to level 4, then ×2 per level)
+// Calculate Battle Spirit multiplier (power progression, unlimited levels)
 function getBattleSpiritMultiplier(level) {
     if (level <= 0) return 1;
-    // Level 1: 2, Level 2: 2² = 4, Level 3: 4² = 16, Level 4: 16² = 256
-    if (level === 1) return SKILL_EFFECTS.tap[0]; // 2
-    if (level === 2) return SKILL_EFFECTS.tap[1]; // 4
-    if (level === 3) return SKILL_EFFECTS.tap[2]; // 16
-    if (level === 4) return SKILL_EFFECTS.tap[3]; // 256
-    if (level === 5) return SKILL_EFFECTS.tap[3] * 2; // 256 × 2 = 512
-    // For levels beyond 5, multiply previous level by 2
-    return getBattleSpiritMultiplier(level - 1) * 2;
+    // Level 1: 2¹ = 2, Level 2: 2² = 4, Level 3: 2³ = 8, Level 4: 2⁴ = 16, Level 5: 2⁵ = 32, etc.
+    return Math.pow(2, level);
 }
 
-// Calculate Hero's Focus passive bonus (squared progression)
+// Calculate Hero's Focus passive bonus (power of 10 progression, max level 4)
 function getHeroFocusPassiveBonus(level) {
     if (level <= 0) return 0;
-    // Level 1: 10, Level 2: 10² = 100, Level 3: 100² = 10000, Level 4: 10000² = 100000000
-    if (level === 1) return SKILL_EFFECTS.passive[0]; // 10
-    if (level === 2) return Math.pow(SKILL_EFFECTS.passive[0], 2); // 10² = 100
-    if (level === 3) return Math.pow(100, 2); // 100² = 10000
-    if (level === 4) return Math.pow(10000, 2); // 10000² = 100000000
-    // For levels beyond 4, continue squaring
-    const prevLevel = getHeroFocusPassiveBonus(level - 1);
-    return Math.pow(prevLevel, 2);
+    // Level 1: 10¹ = 10, Level 2: 10² = 100, Level 3: 10³ = 1000, Level 4: 10⁴ = 10000
+    return Math.pow(10, level);
 }
 
 // Hero Evolution bonuses by level
@@ -1213,8 +1209,8 @@ function activateSkill(skillKey) {
     
     // Handle skills with levels (Battle Spirit, Hero's Focus) - increase level automatically
     if ((skillKey === 'tap' || skillKey === 'passive') && skill.level !== undefined) {
-        // For Battle Spirit: unlimited levels (squared up to 4, then ×2)
-        // For Hero's Focus: max level 4 (squared progression)
+        // For Battle Spirit: unlimited levels (power of 2 progression)
+        // For Hero's Focus: max level 4 (power of 10 progression)
         const maxLevel = (skillKey === 'tap') ? Infinity : 4;
         
         if (skill.level < maxLevel) {
@@ -1229,6 +1225,12 @@ function activateSkill(skillKey) {
             
             showSkillActivation(SKILL_NAMES[skillKey] + ' Level ' + skill.level);
         } else {
+            // Max level reached - show message and don't activate
+            if (skillKey === 'passive' && skill.level >= 4) {
+                showToast('Max level reached!');
+                playSkillBlockSound();
+                return; // Don't set cooldown or activate
+            }
             showSkillActivation(SKILL_NAMES[skillKey]);
         }
     } else {
