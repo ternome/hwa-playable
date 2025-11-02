@@ -480,20 +480,57 @@ function initAudioPool() {
     }
 }
 
-// Enable audio on first user interaction
+// Enable audio on first user interaction (enhanced for PWA compatibility)
 function enableAudio() {
-    if (!audioEnabled && audioPool.length > 0) {
-        // Try to play and immediately pause to unlock audio
-        const testAudio = audioPool[0];
-        testAudio.play().then(() => {
-            testAudio.pause();
-            testAudio.currentTime = 0;
+    if (!audioEnabled) {
+        // Unlock ALL audio objects for PWA compatibility
+        // iOS PWA requires explicit unlock of each Audio object
+        const unlockPromises = [];
+        
+        // Unlock audio pool
+        if (audioPool.length > 0) {
+            const testAudio = audioPool[0];
+            unlockPromises.push(
+                testAudio.play().then(() => {
+                    testAudio.pause();
+                    testAudio.currentTime = 0;
+                }).catch(() => {
+                    // Audio might not be ready yet
+                })
+            );
+        }
+        
+        // Unlock background music
+        if (backgroundMusic) {
+            unlockPromises.push(
+                backgroundMusic.play().then(() => {
+                    backgroundMusic.pause();
+                    backgroundMusic.currentTime = 0;
+                }).catch(() => {
+                    // Audio might not be ready yet
+                })
+            );
+        }
+        
+        // Unlock arena music
+        if (arenaMusic) {
+            unlockPromises.push(
+                arenaMusic.play().then(() => {
+                    arenaMusic.pause();
+                    arenaMusic.currentTime = 0;
+                }).catch(() => {
+                    // Audio might not be ready yet
+                })
+            );
+        }
+        
+        // Mark audio as enabled after at least one succeeds
+        Promise.allSettled(unlockPromises).then(() => {
             audioEnabled = true;
-            
             // Start background music once audio is enabled (only if game has started)
-            startBackgroundMusic();
-        }).catch(() => {
-            // Audio might not be ready yet, will retry on next interaction
+            if (gameStarted) {
+                startBackgroundMusic();
+            }
         });
     }
 }
@@ -787,6 +824,11 @@ function hideHandAnimation() {
 
 // Handle tap
 function handleTap(event) {
+    // Enable audio on first tap (critical for PWA compatibility on iOS)
+    if (!audioEnabled) {
+        enableAudio();
+    }
+    
     // Start game on first tap
     if (!gameStarted) {
         gameStarted = true;
@@ -1788,6 +1830,11 @@ function initGame() {
     // Initialize audio pool and background music
     initAudioPool();
     initBackgroundMusic();
+    
+    // For PWA: try to unlock audio on any early interaction
+    // This helps with iOS PWA audio restrictions
+    document.addEventListener('touchstart', enableAudio, { once: true, passive: true });
+    document.addEventListener('click', enableAudio, { once: true, passive: true });
     
     // Hide skills grid until first tap
     const skillsGrid = document.querySelector('.skills-grid');
