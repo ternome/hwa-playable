@@ -21,6 +21,9 @@ body {
     justify-content: center;
     align-items: center;
     touch-action: manipulation;
+    position: fixed;
+    top: 0;
+    left: 0;
 }
 
 .game-container {

@@ -1823,9 +1823,51 @@ function resetProgress() {
     }
 }
 
+// Auto-scale game to fit screen
+function autoScaleGame() {
+    const body = document.body;
+    const gameContainer = document.querySelector('.game-container');
+    
+    if (!gameContainer) return;
+    
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Get content dimensions (game container natural size)
+    // Game container has max-width based on height, so we calculate expected width
+    const expectedWidth = Math.min(viewportWidth, viewportHeight * 9 / 16);
+    const expectedHeight = viewportHeight;
+    
+    // Calculate scale factors
+    const scaleX = viewportWidth / expectedWidth;
+    const scaleY = viewportHeight / expectedHeight;
+    
+    // Use the smaller scale to ensure everything fits
+    const scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+    
+    // Apply transform to body
+    body.style.transform = `scale(${scale})`;
+    body.style.transformOrigin = 'top left';
+    
+    // Adjust body dimensions to compensate for scale
+    // This prevents scrolling issues
+    body.style.width = `${100 / scale}%`;
+    body.style.height = `${100 / scale}%`;
+}
+
 // Initialize game
 function initGame() {
     // loadGameState(); // Temporarily disabled for testing
+    
+    // Auto-scale game to fit screen
+    autoScaleGame();
+    
+    // Re-scale on resize and orientation change
+    window.addEventListener('resize', autoScaleGame);
+    window.addEventListener('orientationchange', () => {
+        setTimeout(autoScaleGame, 100); // Delay for orientation change to complete
+    });
     
     // Initialize audio pool and background music
     initAudioPool();
