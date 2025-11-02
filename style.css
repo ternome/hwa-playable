@@ -642,6 +642,25 @@ body {
     margin-top: -10px;
 }
 
+.won-taps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.won-taps-label {
+    color: #FFFDED;
+    font-size: 18px;
+    opacity: 0.8;
+}
+
+.won-taps-count {
+    color: #FFFDED;
+    font-size: 24px;
+    font-weight: 700;
+}
+
 .treasure-chest-container {
     width: 100%;
     display: flex;

@@ -18,14 +18,14 @@ const gameState = {
     level: 1,
     experience: 0,
     experienceToNextLevel: EXPERIENCE_PER_LEVEL,
-    coinsPerTap: 1,
-    coinsPerSecond: 1,
+    coinsPerTap: 2,
+    coinsPerSecond: 2,
     taps: 0,
     timeLeft: 60,
     incomeMultiplier: 1, // For Crowd Boost effect
     skills: {
-        tap: { cooldownEndTime: 0 },
-        passive: { cooldownEndTime: 0 },
+        tap: { level: 0, cooldownEndTime: 0, multiplier: 1 }, // Battle Spirit: ×1.5, ×2, ×3, ×4
+        passive: { level: 0, cooldownEndTime: 0 }, // Hero's Focus: +10, +20, +40, +80
         time1: { cooldownEndTime: 0 },
         crowdboost: { cooldownEndTime: 0, activeEndTime: 0 }
     }
@@ -45,16 +45,24 @@ function loadGameState() {
         const parsed = JSON.parse(saved);
         // Merge skills to preserve structure
         if (parsed.skills) {
-            // Migrate old skill structure to new cooldown structure
-            const skillKeys = ['tap', 'passive', 'time1', 'crowdboost'];
-            skillKeys.forEach(key => {
-                if (!parsed.skills[key] || parsed.skills[key].cooldownEndTime === undefined) {
-                    parsed.skills[key] = { cooldownEndTime: 0 };
-                    if (key === 'crowdboost') {
-                        parsed.skills[key].activeEndTime = 0;
-                    }
+            // Migrate old skill structure to new structure with levels
+            if (!parsed.skills.tap || parsed.skills.tap.level === undefined) {
+                parsed.skills.tap = { level: 0, cooldownEndTime: 0, multiplier: 1 };
+            } else {
+                // Restore multiplier if skill has level
+                if (parsed.skills.tap.level > 0) {
+                    parsed.skills.tap.multiplier = SKILL_EFFECTS.tap[parsed.skills.tap.level - 1];
                 }
-            });
+            }
+            if (!parsed.skills.passive || parsed.skills.passive.level === undefined) {
+                parsed.skills.passive = { level: 0, cooldownEndTime: 0 };
+            }
+            if (!parsed.skills.time1 || parsed.skills.time1.cooldownEndTime === undefined) {
+                parsed.skills.time1 = { cooldownEndTime: 0 };
+            }
+            if (!parsed.skills.crowdboost || parsed.skills.crowdboost.cooldownEndTime === undefined) {
+                parsed.skills.crowdboost = { cooldownEndTime: 0, activeEndTime: 0 };
+            }
         }
         // Ensure incomeMultiplier exists
         if (parsed.incomeMultiplier === undefined) {
@@ -128,8 +136,25 @@ function updateUI() {
     document.getElementById('progress-fill').style.width = progressPercent + '%';
     
     // Update coins per tap and per second
-    document.getElementById('coins-per-tap').textContent = formatNumber(gameState.coinsPerTap);
-    document.getElementById('coins-per-sec').textContent = formatNumber(gameState.coinsPerSecond);
+    // Calculate actual coins per tap with all bonuses
+    const battleSpiritSkill = gameState.skills.tap;
+    const tapLevel = battleSpiritSkill.level || 0;
+    const tapMultiplier = getBattleSpiritMultiplier(tapLevel); // Progressive squaring
+    
+    const heroBonuses = getHeroEvolutionBonuses();
+    const baseTap = gameState.coinsPerTap;
+    const actualCoinsPerTap = baseTap * tapMultiplier * heroBonuses.tapBonus * heroBonuses.totalBonus * gameState.incomeMultiplier;
+    
+    // Calculate actual coins per second with all bonuses
+    const heroFocusSkill = gameState.skills.passive;
+    const passiveLevel = heroFocusSkill.level || 0;
+    const passiveBonus = getHeroFocusPassiveBonus(passiveLevel); // Progressive squaring
+    const basePassive = gameState.coinsPerSecond;
+    const totalPassive = basePassive + passiveBonus;
+    const actualCoinsPerSecond = totalPassive * heroBonuses.passiveBonus * heroBonuses.totalBonus * gameState.incomeMultiplier;
+    
+    document.getElementById('coins-per-tap').textContent = formatNumber(actualCoinsPerTap);
+    document.getElementById('coins-per-sec').textContent = formatNumber(actualCoinsPerSecond);
     
     // Update timer and countdown
     const timerValue = Math.floor(gameState.timeLeft);
@@ -198,6 +223,79 @@ function updateSkillCards() {
         if (!card) return;
         
         const skill = gameState.skills[skillKey];
+        
+        // Handle skills with levels (Battle Spirit, Hero's Focus)
+        if ((skillKey === 'tap' || skillKey === 'passive') && skill.level !== undefined) {
+            const skillValue = card.querySelector('.skill-value');
+            const cooldownText = card.querySelector('.cooldown-text');
+            const readyButton = card.querySelector('.ready-button');
+            
+            // Update skill effect display
+            if (skillKey === 'tap') {
+                // Battle Spirit: show multiplier (progressive squaring)
+                if (skillValue) {
+                    if (skill.level > 0) {
+                        const multiplier = getBattleSpiritMultiplier(skill.level);
+                        skillValue.textContent = multiplier.toString();
+                    } else {
+                        skillValue.textContent = '2';
+                    }
+                }
+            } else if (skillKey === 'passive') {
+                // Hero's Focus: show passive income (progressive squaring)
+                if (skillValue) {
+                    if (skill.level > 0) {
+                        const passiveBonus = getHeroFocusPassiveBonus(skill.level);
+                        skillValue.textContent = formatNumber(passiveBonus);
+                    } else {
+                        skillValue.textContent = '10';
+                    }
+                }
+            }
+            
+            // Check cooldown for these skills
+            const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
+            let cooldownRemaining = 0;
+            let isOnCooldown = false;
+            
+            if (skill.cooldownEndTime > now) {
+                cooldownRemaining = skill.cooldownEndTime - now;
+                isOnCooldown = true;
+            }
+            
+            // Hide/show UI elements
+            if (cooldownText) cooldownText.style.display = 'none';
+            if (readyButton) readyButton.style.display = 'none';
+            
+            card.classList.remove('skill-ready', 'skill-cooldown', 'skill-active');
+            
+            if (isOnCooldown) {
+                card.classList.add('skill-cooldown');
+                if (cooldownText) {
+                    cooldownText.textContent = `Cooldown ${Math.ceil(cooldownRemaining / 1000)}s`;
+                    cooldownText.style.display = 'flex';
+                }
+            } else {
+                card.classList.add('skill-ready');
+                // Show READY button
+                if (readyButton) {
+                    // For Battle Spirit, always show READY (unlimited levels)
+                    // For Hero's Focus, show MAX if at level 4
+                    if (skillKey === 'passive' && skill.level >= 4) {
+                        readyButton.textContent = 'MAX';
+                        readyButton.style.opacity = '0.7';
+                    } else {
+                        readyButton.textContent = 'READY';
+                        readyButton.style.opacity = '1';
+                    }
+                    readyButton.style.display = 'flex';
+                }
+            }
+            
+            return;
+        }
+        
+        // Handle skills with cooldown (Heroic Delay, Crowd Boost)
         const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
         
         // Calculate cooldown progress
@@ -648,9 +746,23 @@ function handleTap(event) {
         }
     }
     
+    // Calculate actual coins per tap with all bonuses (same logic as updateUI)
+    const battleSpiritSkill = gameState.skills.tap;
+    const tapLevel = battleSpiritSkill.level || 0;
+    const tapMultiplier = getBattleSpiritMultiplier(tapLevel); // Progressive squaring
+    
+    const heroBonuses = getHeroEvolutionBonuses();
+    const baseTap = gameState.coinsPerTap;
+    let actualCoinsPerTap = baseTap * tapMultiplier * heroBonuses.tapBonus * heroBonuses.totalBonus * gameState.incomeMultiplier;
+    
+    // Level 5 special: 20% chance for double tap
+    if (heroBonuses.specialBonus === 'doubleTapChance' && Math.random() < 0.2) {
+        actualCoinsPerTap *= 2;
+    }
+    
     // Only add coins if time is still remaining
     if (gameState.timeLeft > 0) {
-        gameState.coins += gameState.coinsPerTap * gameState.incomeMultiplier; // Apply multiplier
+        gameState.coins += actualCoinsPerTap;
     }
     gameState.taps++;
     
@@ -683,7 +795,7 @@ function handleTap(event) {
         }, 100);
     }
     
-    // Show coin gain effect at click position
+    // Show coin gain effect at click position with actual coins per tap
     let clickX = null;
     let clickY = null;
     if (event) {
@@ -695,7 +807,7 @@ function handleTap(event) {
             clickY = event.touches[0].clientY;
         }
     }
-    showCoinEffect(gameState.coinsPerTap, clickX, clickY);
+    showCoinEffect(actualCoinsPerTap, clickX, clickY);
     
     // Launch emojis from center
     launchEmojis();
@@ -720,9 +832,8 @@ function levelUp() {
         gameState.experienceToNextLevel = 999999; // Effectively infinite
     }
     
-    // Increase coins per tap and per second on level up
-    gameState.coinsPerTap = Math.floor(1 * Math.pow(1.2, gameState.level - 1));
-    gameState.coinsPerSecond = Math.floor(gameState.coinsPerSecond * 1.1);
+    // Don't modify base coinsPerTap and coinsPerSecond - they are now modified by skills and bonuses
+    // Base values stay constant, bonuses come from skills and hero evolution
     
     // Update character image
     updateCharacterImage();
@@ -1022,24 +1133,69 @@ function showToast(message) {
 
 // Skill name mapping
 const SKILL_NAMES = {
-    tap: 'Iron Skies',
+    tap: 'Battle Spirit',
     passive: 'Hero\'s Focus',
     time1: 'Heroic Delay',
     crowdboost: 'Crowd Boost'
 };
 
-// Activate skill
+// Skill effects (levels increase automatically on activation)
+const SKILL_EFFECTS = {
+    tap: [2, 4, 16, 256], // Battle Spirit multipliers (each level squares the previous value)
+    passive: [10, 20, 40, 80] // Hero's Focus base passive income
+};
+
+// Calculate Battle Spirit multiplier (squared progression up to level 4, then ×2 per level)
+function getBattleSpiritMultiplier(level) {
+    if (level <= 0) return 1;
+    // Level 1: 2, Level 2: 2² = 4, Level 3: 4² = 16, Level 4: 16² = 256
+    if (level === 1) return SKILL_EFFECTS.tap[0]; // 2
+    if (level === 2) return SKILL_EFFECTS.tap[1]; // 4
+    if (level === 3) return SKILL_EFFECTS.tap[2]; // 16
+    if (level === 4) return SKILL_EFFECTS.tap[3]; // 256
+    if (level === 5) return SKILL_EFFECTS.tap[3] * 2; // 256 × 2 = 512
+    // For levels beyond 5, multiply previous level by 2
+    return getBattleSpiritMultiplier(level - 1) * 2;
+}
+
+// Calculate Hero's Focus passive bonus (squared progression)
+function getHeroFocusPassiveBonus(level) {
+    if (level <= 0) return 0;
+    // Level 1: 10, Level 2: 10² = 100, Level 3: 100² = 10000, Level 4: 10000² = 100000000
+    if (level === 1) return SKILL_EFFECTS.passive[0]; // 10
+    if (level === 2) return Math.pow(SKILL_EFFECTS.passive[0], 2); // 10² = 100
+    if (level === 3) return Math.pow(100, 2); // 100² = 10000
+    if (level === 4) return Math.pow(10000, 2); // 10000² = 100000000
+    // For levels beyond 4, continue squaring
+    const prevLevel = getHeroFocusPassiveBonus(level - 1);
+    return Math.pow(prevLevel, 2);
+}
+
+// Hero Evolution bonuses by level
+const HERO_EVOLUTION_BONUSES = {
+    1: { passiveBonus: 1.0, tapBonus: 1.0, totalBonus: 1.0, specialBonus: null },
+    2: { passiveBonus: 1.05, tapBonus: 1.0, totalBonus: 1.0, specialBonus: null }, // +5% к пассиву
+    3: { passiveBonus: 1.0, tapBonus: 1.10, totalBonus: 1.0, specialBonus: null }, // +10% к тапу
+    4: { passiveBonus: 1.0, tapBonus: 1.0, totalBonus: 1.15, specialBonus: null }, // +15% ко всему
+    5: { passiveBonus: 1.0, tapBonus: 1.0, totalBonus: 1.0, specialBonus: 'doubleTapChance' } // 20% шанс двойного тапа
+};
+
+// Get current hero evolution bonuses
+function getHeroEvolutionBonuses() {
+    return HERO_EVOLUTION_BONUSES[gameState.level] || HERO_EVOLUTION_BONUSES[1];
+}
+
+// Activate skill (cooldown-based activation, levels increase automatically)
 function activateSkill(skillKey) {
     if (!gameStarted) return;
     
     const skill = gameState.skills[skillKey];
     const now = Date.now();
     
-    // Check if skill is on cooldown
+    // Check if skill is on cooldown (for all skills)
     if (skill.cooldownEndTime > now) {
         const remaining = Math.ceil((skill.cooldownEndTime - now) / 1000);
         showToast(`Cooldown: ${remaining}s`);
-        // Play block sound for cooldown
         playSkillBlockSound();
         return;
     }
@@ -1048,33 +1204,39 @@ function activateSkill(skillKey) {
     if (skillKey === 'crowdboost' && skill.activeEndTime > now) {
         const remaining = Math.ceil((skill.activeEndTime - now) / 1000);
         showToast(`Already active: ${remaining}s remaining`);
-        // Play block sound for active
         playSkillBlockSound();
         return;
     }
     
-    // Play upgrade sound for successful activation (READY state)
+    // Play upgrade sound for successful activation
     playSkillUpgradeSound();
     
-    // Set cooldown end time
-    const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
-    skill.cooldownEndTime = now + cooldownDuration;
-    
-    // Apply skill effect
-    switch(skillKey) {
-        case 'tap':
-            gameState.coinsPerTap += 1;
-            showSkillActivation(SKILL_NAMES.tap);
-            break;
-        case 'passive':
-            gameState.coinsPerSecond += 7;
-            showSkillActivation(SKILL_NAMES.passive);
-            break;
-        case 'time1':
+    // Handle skills with levels (Battle Spirit, Hero's Focus) - increase level automatically
+    if ((skillKey === 'tap' || skillKey === 'passive') && skill.level !== undefined) {
+        // For Battle Spirit: unlimited levels (squared up to 4, then ×2)
+        // For Hero's Focus: max level 4 (squared progression)
+        const maxLevel = (skillKey === 'tap') ? Infinity : 4;
+        
+        if (skill.level < maxLevel) {
+            skill.level++;
+            
+            // Store multiplier/effect (will be used in formulas)
+            if (skillKey === 'tap') {
+                skill.multiplier = getBattleSpiritMultiplier(skill.level);
+            } else if (skillKey === 'passive') {
+                skill.passiveBonus = getHeroFocusPassiveBonus(skill.level);
+            }
+            
+            showSkillActivation(SKILL_NAMES[skillKey] + ' Level ' + skill.level);
+        } else {
+            showSkillActivation(SKILL_NAMES[skillKey]);
+        }
+    } else {
+        // Regular skill activation
+        if (skillKey === 'time1') {
             gameState.timeLeft += 10;
             showSkillActivation(SKILL_NAMES.time1);
-            break;
-        case 'crowdboost':
+        } else if (skillKey === 'crowdboost') {
             // Activate Crowd Boost for 5 seconds
             skill.activeEndTime = now + (CROWD_BOOST_DURATION * 1000);
             gameState.incomeMultiplier = 3;
@@ -1088,8 +1250,12 @@ function activateSkill(skillKey) {
             showLightWave();
             
             showSkillActivation(SKILL_NAMES.crowdboost);
-            break;
+        }
     }
+    
+    // Set cooldown end time for all skills
+    const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
+    skill.cooldownEndTime = now + cooldownDuration;
     
     updateUI();
     saveGameState();
@@ -1111,9 +1277,27 @@ function updateSkillCooldowns() {
 // Passive coin generation
 function generatePassiveCoins() {
     // Only generate coins if game has started and time is still remaining
-    if (gameStarted && gameState.timeLeft > 0 && gameState.coinsPerSecond > 0) {
-        const coinsToAdd = (gameState.coinsPerSecond / 60) * gameState.incomeMultiplier; // Apply multiplier
-        gameState.coins += coinsToAdd;
+    if (gameStarted && gameState.timeLeft > 0) {
+        // Get Hero's Focus passive bonuses (progressive squaring)
+        const heroFocusSkill = gameState.skills.passive;
+        const passiveLevel = heroFocusSkill.level || 0;
+        const passiveBonus = getHeroFocusPassiveBonus(passiveLevel); // Progressive squaring
+        
+        // Get Hero Evolution bonuses
+        const heroBonuses = getHeroEvolutionBonuses();
+        
+        // Formula: PassiveIncome = (BasePassive + Σ(PassiveUpgrades²)) × PassiveLevelBonus × TotalBonus × CrowdBoost
+        const basePassive = gameState.coinsPerSecond; // Base value
+        const totalPassive = basePassive + passiveBonus;
+        const passiveLevelBonus = heroBonuses.passiveBonus; // Level 2: +5% к пассиву
+        const totalBonus = heroBonuses.totalBonus; // Level 4: +15% ко всему
+        
+        // Calculate passive income per frame (60fps)
+        const passiveIncome = (totalPassive / 60) * passiveLevelBonus * totalBonus * gameState.incomeMultiplier;
+        
+        if (passiveIncome > 0) {
+            gameState.coins += passiveIncome;
+        }
     }
 }
 
@@ -1211,6 +1395,12 @@ function showSuccessScreen() {
         bonusPercentText.textContent = 100 - mockPercent;
     }
     
+    // Update taps count
+    const wonTapsCount = document.getElementById('won-taps-count');
+    if (wonTapsCount) {
+        wonTapsCount.textContent = formatNumber(gameState.taps);
+    }
+    
     // Update character image on success screen
     if (successCharacterImg) {
         const level = Math.min(gameState.level, MAX_LEVEL);
@@ -1271,14 +1461,14 @@ function resetGameCompletely() {
     gameState.level = 1;
     gameState.experience = 0;
     gameState.experienceToNextLevel = EXPERIENCE_PER_LEVEL;
-    gameState.coinsPerTap = 1;
-    gameState.coinsPerSecond = 0;
+    gameState.coinsPerTap = 2;
+    gameState.coinsPerSecond = 2;
     gameState.taps = 0;
     gameState.timeLeft = 60;
     gameState.incomeMultiplier = 1;
     gameState.skills = {
-        tap: { cooldownEndTime: 0 },
-        passive: { cooldownEndTime: 0 },
+        tap: { level: 0, cooldownEndTime: 0, multiplier: 1 },
+        passive: { level: 0, cooldownEndTime: 0 },
         time1: { cooldownEndTime: 0 },
         crowdboost: { cooldownEndTime: 0, activeEndTime: 0 }
     };
