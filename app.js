@@ -3,12 +3,12 @@ const MAX_LEVEL = 5;
 const EXPERIENCE_PER_LEVEL = 30;
 
 const gameState = {
-    coins: 1,
+    coins: 94,
     level: 1,
     experience: 0,
     experienceToNextLevel: EXPERIENCE_PER_LEVEL,
-    coinsPerTap: 1,
-    coinsPerSecond: 1,
+    coinsPerTap: 3,
+    coinsPerSecond: 5,
     taps: 0,
     timeLeft: 60,
     skills: {
