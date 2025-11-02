@@ -787,22 +787,6 @@ function handleTap(event) {
         }
     }
     
-    // Visual feedback - press animation for character and pedestal
-    const character = document.getElementById('character');
-    const pedestal = document.querySelector('.pedestal');
-    
-    if (character && pedestal) {
-        // Add press class
-        character.classList.add('tap-press');
-        pedestal.classList.add('tap-press');
-        
-        // Remove press class after animation completes (100ms)
-        setTimeout(() => {
-            character.classList.remove('tap-press');
-            pedestal.classList.remove('tap-press');
-        }, 100);
-    }
-    
     // Show coin gain effect at click position with actual coins per tap
     let clickX = null;
     let clickY = null;
@@ -816,6 +800,9 @@ function handleTap(event) {
         }
     }
     showCoinEffect(actualCoinsPerTap, clickX, clickY);
+    
+    // Show ripple effect at tap position
+    showRippleEffect(clickX, clickY);
     
     // Launch emojis from center
     launchEmojis();
@@ -1031,6 +1018,35 @@ function showCoinEffect(amount, clickX, clickY) {
     document.body.appendChild(effect);
     
     setTimeout(() => effect.remove(), 1000);
+}
+
+// Show ripple effect at tap position
+function showRippleEffect(clickX, clickY) {
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple-effect';
+    
+    // Use click position if available, otherwise fallback to character position
+    let posX, posY;
+    if (clickX !== null && clickY !== null && typeof clickX === 'number' && typeof clickY === 'number' && !isNaN(clickX) && !isNaN(clickY)) {
+        // Use exact click position (no random offset)
+        posX = clickX;
+        posY = clickY;
+    } else {
+        // Fallback to character position
+        const character = document.getElementById('character');
+        const rect = character.getBoundingClientRect();
+        posX = rect.left + rect.width / 2;
+        posY = rect.top + rect.height / 2;
+    }
+    
+    // Position the ripple effect centered on click position
+    ripple.style.left = posX + 'px';
+    ripple.style.top = posY + 'px';
+    
+    document.body.appendChild(ripple);
+    
+    // Remove element after animation completes
+    setTimeout(() => ripple.remove(), 600);
 }
 
 // Add coin float animation
