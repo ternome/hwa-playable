@@ -2,20 +2,32 @@
 const MAX_LEVEL = 5;
 const EXPERIENCE_PER_LEVEL = 30;
 
+// Skill cooldown durations (in seconds)
+const SKILL_COOLDOWNS = {
+    tap: 3,
+    passive: 7,
+    time1: 53,
+    crowdboost: 15
+};
+
+// Crowd Boost active duration (in seconds)
+const CROWD_BOOST_DURATION = 5;
+
 const gameState = {
-    coins: 94,
+    coins: 1,
     level: 1,
     experience: 0,
     experienceToNextLevel: EXPERIENCE_PER_LEVEL,
-    coinsPerTap: 3,
-    coinsPerSecond: 5,
+    coinsPerTap: 1,
+    coinsPerSecond: 1,
     taps: 0,
-    timeLeft: 60,
+    timeLeft: 15,
+    incomeMultiplier: 1, // For Crowd Boost effect
     skills: {
-        tap: { level: 0, baseCost: 100, costMultiplier: 1.5 },
-        passive: { level: 0, baseCost: 150, costMultiplier: 1.5 },
-        time1: { level: 0, baseCost: 100, costMultiplier: 1.5 },
-        time2: { level: 0, baseCost: 100, costMultiplier: 1.5 }
+        tap: { cooldownEndTime: 0 },
+        passive: { cooldownEndTime: 0 },
+        time1: { cooldownEndTime: 0 },
+        crowdboost: { cooldownEndTime: 0, activeEndTime: 0 }
     }
 };
 
@@ -31,6 +43,23 @@ function loadGameState() {
     const saved = localStorage.getItem('tapGameState');
     if (saved) {
         const parsed = JSON.parse(saved);
+        // Merge skills to preserve structure
+        if (parsed.skills) {
+            // Migrate old skill structure to new cooldown structure
+            const skillKeys = ['tap', 'passive', 'time1', 'crowdboost'];
+            skillKeys.forEach(key => {
+                if (!parsed.skills[key] || parsed.skills[key].cooldownEndTime === undefined) {
+                    parsed.skills[key] = { cooldownEndTime: 0 };
+                    if (key === 'crowdboost') {
+                        parsed.skills[key].activeEndTime = 0;
+                    }
+                }
+            });
+        }
+        // Ensure incomeMultiplier exists
+        if (parsed.incomeMultiplier === undefined) {
+            parsed.incomeMultiplier = 1;
+        }
         Object.assign(gameState, parsed);
     }
 }
@@ -162,38 +191,61 @@ function updateUI() {
 
 // Update skill cards
 function updateSkillCards() {
-    const skillData = {
-        tap: { value: 1, suffix: ' per tap' },
-        passive: { value: 7, suffix: ' per sec' },
-        time1: { value: 10, suffix: ' sec' },
-        time2: { value: 10, suffix: ' sec' }
-    };
+    const now = Date.now();
     
     Object.keys(gameState.skills).forEach(skillKey => {
         const card = document.querySelector(`[data-skill="${skillKey}"]`);
         if (!card) return;
         
         const skill = gameState.skills[skillKey];
-        const data = skillData[skillKey];
+        const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
         
-        // Calculate current cost
-        const cost = Math.floor(skill.baseCost * Math.pow(skill.costMultiplier, skill.level));
-        const costElement = card.querySelector('.cost-value');
-        if (costElement) {
-            costElement.textContent = formatNumber(cost);
+        // Calculate cooldown progress
+        let cooldownRemaining = 0;
+        let isOnCooldown = false;
+        let isActive = false;
+        let activeRemaining = 0;
+        
+        if (skill.cooldownEndTime > now) {
+            cooldownRemaining = skill.cooldownEndTime - now;
+            isOnCooldown = true;
         }
         
-        // Update card state (enable/disable)
-        if (gameState.coins < cost) {
-            card.classList.add('disabled');
+        // Check if Crowd Boost is active
+        if (skillKey === 'crowdboost' && skill.activeEndTime > now) {
+            isActive = true;
+            activeRemaining = skill.activeEndTime - now;
+        }
+        
+        // Hide/show UI elements based on state
+        const cooldownText = card.querySelector('.cooldown-text');
+        const readyButton = card.querySelector('.ready-button');
+        
+        // Hide all first
+        if (cooldownText) cooldownText.style.display = 'none';
+        if (readyButton) readyButton.style.display = 'none';
+        
+        // Update card visual state
+        card.classList.remove('skill-ready', 'skill-cooldown', 'skill-active');
+        
+        if (isActive && skillKey === 'crowdboost') {
+            card.classList.add('skill-active');
+            if (cooldownText) {
+                cooldownText.textContent = `Active ${Math.ceil(activeRemaining / 1000)}s`;
+                cooldownText.style.display = 'flex';
+            }
+        } else if (isOnCooldown) {
+            card.classList.add('skill-cooldown');
+            if (cooldownText) {
+                cooldownText.textContent = `Cooldown ${Math.ceil(cooldownRemaining / 1000)}s`;
+                cooldownText.style.display = 'flex';
+            }
         } else {
-            card.classList.remove('disabled');
-        }
-        
-        // Update skill value display
-        const valueSpan = card.querySelector('.skill-value');
-        if (valueSpan) {
-            valueSpan.textContent = formatNumber(data.value * (skill.level + 1));
+            card.classList.add('skill-ready');
+            if (readyButton) {
+                readyButton.textContent = 'READY';
+                readyButton.style.display = 'flex';
+            }
         }
     });
 }
@@ -329,6 +381,24 @@ function playLevelUpSound() {
     const levelUpAudio = new Audio('assets/sounds/hero_popup_upgrade_1000.wav');
     levelUpAudio.volume = 1.0;
     levelUpAudio.play().catch(() => {
+        // Ignore errors - might not be unlocked yet
+    });
+}
+
+// Play skill upgrade sound (for READY skill activation)
+function playSkillUpgradeSound() {
+    const upgradeAudio = new Audio('assets/sounds/hero_popup_upgrade_1000.wav');
+    upgradeAudio.volume = 1.0;
+    upgradeAudio.play().catch(() => {
+        // Ignore errors - might not be unlocked yet
+    });
+}
+
+// Play skill block sound (for Cooldown/Active clicks)
+function playSkillBlockSound() {
+    const blockAudio = new Audio('assets/sounds/ATTACK@0.wav');
+    blockAudio.volume = 1.0;
+    blockAudio.play().catch(() => {
         // Ignore errors - might not be unlocked yet
     });
 }
@@ -558,6 +628,20 @@ function handleTap(event) {
         gameStarted = true;
         // Hide hand animation on first tap
         hideHandAnimation();
+        
+        // Set initial cooldown for all skills (so they start on cooldown, not ready)
+        const now = Date.now();
+        Object.keys(gameState.skills).forEach(skillKey => {
+            const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
+            gameState.skills[skillKey].cooldownEndTime = now + cooldownDuration;
+        });
+        
+        // Show skills grid (fade in)
+        const skillsGrid = document.querySelector('.skills-grid');
+        if (skillsGrid) {
+            skillsGrid.classList.remove('skills-hidden');
+        }
+        
         // Start background music if audio is enabled
         if (audioEnabled) {
             startBackgroundMusic();
@@ -566,7 +650,7 @@ function handleTap(event) {
     
     // Only add coins if time is still remaining
     if (gameState.timeLeft > 0) {
-        gameState.coins += gameState.coinsPerTap;
+        gameState.coins += gameState.coinsPerTap * gameState.incomeMultiplier; // Apply multiplier
     }
     gameState.taps++;
     
@@ -869,6 +953,38 @@ function showLevelUpEffect() {
     setTimeout(() => effect.remove(), 1000);
 }
 
+// Show skill activation effect
+function showSkillActivation(skillName) {
+    const effect = document.createElement('div');
+    effect.textContent = skillName.toUpperCase() + '!';
+    effect.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        color: #ffd700;
+        font-weight: bold;
+        font-size: 40px;
+        z-index: 1000;
+        text-shadow: 0 0 20px #ffd700;
+        animation: levelUpPulse 1s ease-out forwards;
+    `;
+    
+    document.body.appendChild(effect);
+    
+    setTimeout(() => effect.remove(), 1000);
+}
+
+// Show light wave effect for Crowd Boost
+function showLightWave() {
+    const wave = document.createElement('div');
+    wave.className = 'light-wave';
+    document.body.appendChild(wave);
+    
+    setTimeout(() => wave.remove(), 1000);
+}
+
 // Add level up animation
 const levelUpStyle = document.createElement('style');
 levelUpStyle.textContent = `
@@ -904,35 +1020,91 @@ function showToast(message) {
     }, 3000);
 }
 
-// Buy skill
-function buySkill(skillKey) {
-    const skill = gameState.skills[skillKey];
-    const cost = Math.floor(skill.baseCost * Math.pow(skill.costMultiplier, skill.level));
+// Skill name mapping
+const SKILL_NAMES = {
+    tap: 'Iron Skies',
+    passive: 'Hero\'s Focus',
+    time1: 'Heroic Delay',
+    crowdboost: 'Crowd Boost'
+};
+
+// Activate skill
+function activateSkill(skillKey) {
+    if (!gameStarted) return;
     
-    if (gameState.coins >= cost) {
-        gameState.coins -= cost;
-        skill.level++;
-        
-        // Apply skill effect
-        switch(skillKey) {
-            case 'tap':
-                gameState.coinsPerTap += 1;
-                break;
-            case 'passive':
-                gameState.coinsPerSecond += 7;
-                break;
-            case 'time1':
-            case 'time2':
-                gameState.timeLeft += 10;
-                break;
-        }
-        
-        updateUI();
-        saveGameState();
-    } else {
-        // Show toast with reason
-        const needed = cost - gameState.coins;
-        showToast(`Not enough coins! Need ${formatNumber(needed)} more 🪙`);
+    const skill = gameState.skills[skillKey];
+    const now = Date.now();
+    
+    // Check if skill is on cooldown
+    if (skill.cooldownEndTime > now) {
+        const remaining = Math.ceil((skill.cooldownEndTime - now) / 1000);
+        showToast(`Cooldown: ${remaining}s`);
+        // Play block sound for cooldown
+        playSkillBlockSound();
+        return;
+    }
+    
+    // Check if Crowd Boost is already active
+    if (skillKey === 'crowdboost' && skill.activeEndTime > now) {
+        const remaining = Math.ceil((skill.activeEndTime - now) / 1000);
+        showToast(`Already active: ${remaining}s remaining`);
+        // Play block sound for active
+        playSkillBlockSound();
+        return;
+    }
+    
+    // Play upgrade sound for successful activation (READY state)
+    playSkillUpgradeSound();
+    
+    // Set cooldown end time
+    const cooldownDuration = SKILL_COOLDOWNS[skillKey] * 1000;
+    skill.cooldownEndTime = now + cooldownDuration;
+    
+    // Apply skill effect
+    switch(skillKey) {
+        case 'tap':
+            gameState.coinsPerTap += 1;
+            showSkillActivation(SKILL_NAMES.tap);
+            break;
+        case 'passive':
+            gameState.coinsPerSecond += 7;
+            showSkillActivation(SKILL_NAMES.passive);
+            break;
+        case 'time1':
+            gameState.timeLeft += 10;
+            showSkillActivation(SKILL_NAMES.time1);
+            break;
+        case 'crowdboost':
+            // Activate Crowd Boost for 5 seconds
+            skill.activeEndTime = now + (CROWD_BOOST_DURATION * 1000);
+            gameState.incomeMultiplier = 3;
+            
+            // Vibration effect
+            if (navigator.vibrate) {
+                navigator.vibrate(200);
+            }
+            
+            // Light wave effect
+            showLightWave();
+            
+            showSkillActivation(SKILL_NAMES.crowdboost);
+            break;
+    }
+    
+    updateUI();
+    saveGameState();
+}
+
+// Update skill cooldowns and active states
+function updateSkillCooldowns() {
+    if (!gameStarted) return;
+    
+    const now = Date.now();
+    
+    // Check if Crowd Boost active time has expired
+    if (gameState.skills.crowdboost.activeEndTime > 0 && now >= gameState.skills.crowdboost.activeEndTime) {
+        gameState.skills.crowdboost.activeEndTime = 0;
+        gameState.incomeMultiplier = 1;
     }
 }
 
@@ -940,7 +1112,7 @@ function buySkill(skillKey) {
 function generatePassiveCoins() {
     // Only generate coins if game has started and time is still remaining
     if (gameStarted && gameState.timeLeft > 0 && gameState.coinsPerSecond > 0) {
-        const coinsToAdd = gameState.coinsPerSecond / 60; // 60 FPS
+        const coinsToAdd = (gameState.coinsPerSecond / 60) * gameState.incomeMultiplier; // Apply multiplier
         gameState.coins += coinsToAdd;
     }
 }
@@ -948,6 +1120,7 @@ function generatePassiveCoins() {
 // Timer countdown
 let lastSecond = -1;
 let lastFrameTime = null;
+let musicStopped = false; // Track if music was stopped for last 10 seconds
 
 function updateTimer() {
     // Don't update timer until game has started
@@ -983,6 +1156,12 @@ function updateTimer() {
                 // Add red flash
                 gameContainer.classList.add('red-flash');
                 
+                // Stop background music when red flash starts (last 10 seconds) - only once
+                if (!musicStopped && backgroundMusic && !backgroundMusic.paused) {
+                    backgroundMusic.pause();
+                    musicStopped = true;
+                }
+                
                 // Remove flash after 500ms (half second - creates blinking effect)
                 // setTimeout(() => {
                 //     if (gameContainer) {
@@ -999,6 +1178,8 @@ function updateTimer() {
                 gameContainer.classList.remove('red-flash');
                 lastSecond = -1;
             }
+            // Reset music stopped flag when time goes back above 10 seconds
+            musicStopped = false;
         }
     }
 }
@@ -1094,11 +1275,12 @@ function resetGameCompletely() {
     gameState.coinsPerSecond = 0;
     gameState.taps = 0;
     gameState.timeLeft = 60;
+    gameState.incomeMultiplier = 1;
     gameState.skills = {
-        tap: { level: 0, baseCost: 100, costMultiplier: 1.5 },
-        passive: { level: 0, baseCost: 150, costMultiplier: 1.5 },
-        time1: { level: 0, baseCost: 100, costMultiplier: 1.5 },
-        time2: { level: 0, baseCost: 100, costMultiplier: 1.5 }
+        tap: { cooldownEndTime: 0 },
+        passive: { cooldownEndTime: 0 },
+        time1: { cooldownEndTime: 0 },
+        crowdboost: { cooldownEndTime: 0, activeEndTime: 0 }
     };
     
     // Reset game started flag
@@ -1107,10 +1289,17 @@ function resetGameCompletely() {
     // Reset timer frame time
     lastFrameTime = null;
     lastSecond = -1;
+    musicStopped = false;
     
     // Stop background music
     if (backgroundMusic && !backgroundMusic.paused) {
         backgroundMusic.pause();
+    }
+    
+    // Hide skills grid again
+    const skillsGrid = document.querySelector('.skills-grid');
+    if (skillsGrid) {
+        skillsGrid.classList.add('skills-hidden');
     }
     
     // Show hand animation again
@@ -1151,11 +1340,12 @@ function resetProgress() {
         gameState.coinsPerSecond = 0;
         gameState.taps = 0;
         gameState.timeLeft = 60;
+        gameState.incomeMultiplier = 1;
         gameState.skills = {
-            tap: { level: 0, baseCost: 100, costMultiplier: 1.5 },
-            passive: { level: 0, baseCost: 150, costMultiplier: 1.5 },
-            time1: { level: 0, baseCost: 100, costMultiplier: 1.5 },
-            time2: { level: 0, baseCost: 100, costMultiplier: 1.5 }
+            tap: { cooldownEndTime: 0 },
+            passive: { cooldownEndTime: 0 },
+            time1: { cooldownEndTime: 0 },
+            crowdboost: { cooldownEndTime: 0, activeEndTime: 0 }
         };
         
         // Reset game started flag
@@ -1168,6 +1358,12 @@ function resetProgress() {
         // Stop background music
         if (backgroundMusic && !backgroundMusic.paused) {
             backgroundMusic.pause();
+        }
+        
+        // Hide skills grid again
+        const skillsGrid = document.querySelector('.skills-grid');
+        if (skillsGrid) {
+            skillsGrid.classList.add('skills-hidden');
         }
         
         // Show hand animation again
@@ -1192,6 +1388,12 @@ function initGame() {
     initAudioPool();
     initBackgroundMusic();
     
+    // Hide skills grid until first tap
+    const skillsGrid = document.querySelector('.skills-grid');
+    if (skillsGrid && !gameStarted) {
+        skillsGrid.classList.add('skills-hidden');
+    }
+    
     // Initialize hand animation (only shown if game hasn't started)
     initHandAnimation();
     
@@ -1213,7 +1415,7 @@ function initGame() {
             e.stopPropagation();
             const skillKey = card.dataset.skill;
             if (skillKey) {
-                buySkill(skillKey);
+                activateSkill(skillKey);
             }
         });
         
@@ -1224,7 +1426,7 @@ function initGame() {
             e.stopPropagation();
             const skillKey = card.dataset.skill;
             if (skillKey) {
-                buySkill(skillKey);
+                activateSkill(skillKey);
             }
         });
     });
@@ -1280,6 +1482,7 @@ function initGame() {
         // Only update game if success screen is not shown
         const successScreen = document.getElementById('success-screen');
         if (!successScreen || successScreen.classList.contains('hidden')) {
+            updateSkillCooldowns();
             generatePassiveCoins();
             updateTimer();
             updateUIThrottled();

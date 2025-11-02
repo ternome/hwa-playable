@@ -298,6 +298,12 @@ body {
     align-content: center;
     gap: 4px;
     flex-wrap: wrap;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.skills-grid.skills-hidden {
+    opacity: 0;
 }
 
 .skill-card {
@@ -330,6 +336,101 @@ body {
     cursor: not-allowed;
 }
 
+/* Skill states */
+.skill-card.skill-ready {
+    background: linear-gradient(112deg, #FCDB00 11.88%, #FFAF01 97.88%);
+}
+
+.skill-card.skill-ready .skill-title,
+.skill-card.skill-ready .skill-effect {
+    color: #000000;
+}
+
+.skill-card.skill-cooldown {
+    background: #3C4046;
+}
+
+.skill-card.skill-active {
+    background: #ED3D3D;
+}
+
+/* Ready button */
+.ready-button {
+    display: none;
+    width: 100%;
+    height: 32px;
+    padding: 4px 35.5px 3px 33px;
+    border-radius: 100px;
+    background: #50B900;
+    color: #FFFFFF;
+    text-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.30);
+    text-transform: uppercase;
+    font-size: 19px;
+    font-weight: bold;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin-top: auto;
+    border: none;
+    cursor: pointer;
+}
+
+.skill-ready .ready-button {
+    display: flex;
+}
+
+/* Cooldown text */
+.cooldown-text {
+    display: none;
+    width: 100%;
+    height: 32px;
+    padding: 4px 35.5px 3px 33px;
+    border-radius: 100px;
+    background: #1E2228;
+    color: #fff;
+    font-size: 12px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin-top: auto;
+}
+
+.skill-cooldown .cooldown-text {
+    display: flex;
+}
+
+.skill-active .cooldown-text {
+    display: flex;
+}
+
+/* Light wave effect */
+.light-wave {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+    z-index: 999;
+    animation: lightWaveExpand 1s ease-out forwards;
+}
+
+@keyframes lightWaveExpand {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+    }
+    100% {
+        width: 800px;
+        height: 800px;
+        opacity: 0;
+    }
+}
+
 .skill-info {
     width: 100%;
     display: flex;
@@ -345,7 +446,7 @@ body {
 
 .skill-effect {
     font-size: 12px;
-    color: #4ade80;
+    color: #FFFFFF;
     display: flex;
     align-items: center;
     gap: 4px;
