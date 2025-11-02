@@ -22,6 +22,10 @@ const gameState = {
 // Track if game has started (first tap occurred)
 let gameStarted = false;
 
+// Spine animation variables
+let handApp = null;
+let handSpine = null;
+
 // Load game state from localStorage
 function loadGameState() {
     const saved = localStorage.getItem('tapGameState');
@@ -329,11 +333,231 @@ function playLevelUpSound() {
     });
 }
 
+// Initialize Spine hand animation
+function initHandAnimation() {
+    const handContainer = document.getElementById('onboarding-hand');
+    if (!handContainer) return;
+    
+    // Don't initialize if already initialized and game has started
+    if (handApp && gameStarted) return;
+    
+    // Clean up existing animation if any
+    if (handApp) {
+        hideHandAnimation();
+    }
+    
+    // Clear any existing fallback
+    const existingFallback = handContainer.querySelector('.fallback-hand');
+    if (existingFallback) {
+        existingFallback.remove();
+    }
+    
+    try {
+        // Create Pixi Application
+        handApp = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x000000,
+            backgroundAlpha: 0,
+            antialias: true,
+            autoDensity: true,
+            resolution: window.devicePixelRatio || 1
+        });
+        
+        handContainer.appendChild(handApp.view);
+        
+        // Load Spine animation
+        // In Pixi.js 7, Loader may not be available, so we use direct fetch
+        const loadSpineAnimation = async () => {
+            try {
+                // Try using Assets API first (Pixi.js 7+)
+                if (PIXI.Assets) {
+                    try {
+                        await PIXI.Assets.load('assets/animation/hand.spine');
+                        const spineResource = PIXI.Assets.get('assets/animation/hand.spine');
+                        
+                        if (spineResource && spineResource.spineData) {
+                            createSpineFromData(spineResource.spineData, handContainer);
+                            return;
+                        }
+                    } catch (assetsError) {
+                        console.log('Assets API failed, trying direct load:', assetsError);
+                    }
+                }
+                
+                // Try Loader if available (from pixi-spine plugin)
+                // This is the standard way to load Spine files with pixi-spine
+                if (typeof PIXI.Loader !== 'undefined') {
+                    const loader = new PIXI.Loader();
+                    loader.add('hand', 'assets/animation/hand.spine');
+                    
+                    loader.load((loader, resources) => {
+                        if (resources.hand && resources.hand.spineData) {
+                            createSpineFromData(resources.hand.spineData, handContainer);
+                        } else {
+                            console.warn('Spine data not found in resources, using fallback');
+                            showFallbackHand(handContainer);
+                        }
+                    });
+                    
+                    loader.onError.add((error, loader, resource) => {
+                        console.warn('Loader error (using fallback):', error);
+                        showFallbackHand(handContainer);
+                    });
+                    return;
+                }
+                
+                // If Loader is not available, show fallback immediately
+                // We don't use fetch because it doesn't work with file:// protocol
+                console.warn('PIXI.Loader not available, using fallback emoji hand');
+                showFallbackHand(handContainer);
+            } catch (error) {
+                console.error('Error in loadSpineAnimation:', error);
+                showFallbackHand(handContainer);
+            }
+        };
+        
+        loadSpineAnimation();
+        
+        // Handle window resize
+        const resizeHandler = () => {
+            if (handApp) {
+                handApp.renderer.resize(window.innerWidth, window.innerHeight);
+                if (handSpine) {
+                    handSpine.x = handApp.screen.width / 2;
+                    handSpine.y = handApp.screen.height / 2;
+                }
+            }
+        };
+        
+        window.addEventListener('resize', resizeHandler);
+    } catch (error) {
+        console.error('Error initializing Pixi:', error);
+        // Fallback: show emoji hand
+        showFallbackHand(handContainer);
+    }
+}
+
+// Helper function to create Spine from data
+function createSpineFromData(spineData, handContainer) {
+    try {
+        handSpine = new PIXI.spine.Spine(spineData);
+        
+        // Center the animation
+        handSpine.x = handApp.screen.width / 2;
+        handSpine.y = handApp.screen.height / 2;
+        
+        // Scale if needed (adjust based on your animation size)
+        handSpine.scale.set(1);
+        
+        // Set animation - try different common animation names
+        let animationSet = false;
+        const animNames = ['animation', 'idle', 'default', 'tap', 'point'];
+        
+        for (const animName of animNames) {
+            if (handSpine.state.hasAnimation(animName)) {
+                handSpine.state.setAnimation(0, animName, true);
+                animationSet = true;
+                break;
+            }
+        }
+        
+        if (!animationSet) {
+            // Try to get first available animation
+            const animations = spineData.animations;
+            if (animations && animations.length > 0) {
+                handSpine.state.setAnimation(0, animations[0].name, true);
+                animationSet = true;
+            }
+        }
+        
+        if (!animationSet) {
+            throw new Error('No animation found');
+        }
+        
+        handApp.stage.addChild(handSpine);
+        
+        // Show hand animation only if game hasn't started
+        if (!gameStarted) {
+            handContainer.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error creating Spine from data:', error);
+        // Fallback: show emoji hand
+        showFallbackHand(handContainer);
+    }
+}
+
+// Show fallback hand animation with image
+function showFallbackHand(container) {
+    // Clear any existing fallback elements
+    const existingFallback = container.querySelector('.fallback-hand');
+    const existingRipple = container.querySelector('.onboarding-ripple');
+    const existingText = container.querySelector('.onboarding-text');
+    
+    if (existingFallback) existingFallback.remove();
+    if (existingRipple) existingRipple.remove();
+    if (existingText) existingText.remove();
+    
+    // Create hand image
+    const handImg = document.createElement('img');
+    handImg.src = 'assets/hand-static.png';
+    handImg.className = 'fallback-hand';
+    handImg.alt = 'Tap here';
+    container.appendChild(handImg);
+    
+    // Create ripple effect
+    const ripple = document.createElement('div');
+    ripple.className = 'onboarding-ripple';
+    container.appendChild(ripple);
+    
+    // Create text
+    const text = document.createElement('div');
+    text.className = 'onboarding-text';
+    text.textContent = 'Tap as fast as you can!';
+    container.appendChild(text);
+    
+    // Show only if game hasn't started
+    if (!gameStarted) {
+        container.classList.remove('hidden');
+    }
+}
+
+// Hide hand animation
+function hideHandAnimation() {
+    const handContainer = document.getElementById('onboarding-hand');
+    if (handContainer) {
+        handContainer.classList.add('hidden');
+        
+        // Remove all fallback elements
+        const fallback = handContainer.querySelector('.fallback-hand');
+        const ripple = handContainer.querySelector('.onboarding-ripple');
+        const text = handContainer.querySelector('.onboarding-text');
+        
+        if (fallback) fallback.remove();
+        if (ripple) ripple.remove();
+        if (text) text.remove();
+    }
+    
+    // Clean up Pixi resources
+    if (handApp) {
+        try {
+            handApp.destroy(true, { children: true, texture: true, baseTexture: true });
+        } catch (error) {
+            console.error('Error destroying Pixi app:', error);
+        }
+        handApp = null;
+        handSpine = null;
+    }
+}
+
 // Handle tap
 function handleTap(event) {
     // Start game on first tap
     if (!gameStarted) {
         gameStarted = true;
+        // Hide hand animation on first tap
+        hideHandAnimation();
         // Start background music if audio is enabled
         if (audioEnabled) {
             startBackgroundMusic();
@@ -889,6 +1113,9 @@ function resetGameCompletely() {
         backgroundMusic.pause();
     }
     
+    // Show hand animation again
+    initHandAnimation();
+    
     // Clear localStorage
     localStorage.removeItem('tapGameState');
     
@@ -943,6 +1170,9 @@ function resetProgress() {
             backgroundMusic.pause();
         }
         
+        // Show hand animation again
+        initHandAnimation();
+        
         // Clear localStorage
         localStorage.removeItem('tapGameState');
         
@@ -961,6 +1191,9 @@ function initGame() {
     // Initialize audio pool and background music
     initAudioPool();
     initBackgroundMusic();
+    
+    // Initialize hand animation (only shown if game hasn't started)
+    initHandAnimation();
     
     // Tap handler
     const characterArea = document.querySelector('.middle-section');
