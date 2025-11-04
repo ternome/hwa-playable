@@ -1680,11 +1680,24 @@ function hideSuccessScreen() {
     }
 }
 
-// Get app store URL based on user agent
+// Get native app store URL (opens in native app)
 function getAppStoreUrl() {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
     
-    // Check if Android (more comprehensive detection)
+    // Check if Android - use market:// scheme for native Google Play app
+    if (/android/i.test(userAgent)) {
+        return 'market://details?id=com.nexters.herowars';
+    }
+    
+    // iOS: Use itms-apps:// scheme for native App Store app
+    return 'itms-apps://itunes.apple.com/app/id1158967485';
+}
+
+// Get web app store URL (fallback if native doesn't work)
+function getWebAppStoreUrl() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
+    
+    // Check if Android
     if (/android/i.test(userAgent)) {
         return 'https://play.google.com/store/apps/details?id=com.nexters.herowars&hl=en';
     }
@@ -1937,16 +1950,32 @@ function initGame() {
     // Claim button handler (on success screen)
     const claimButton = document.getElementById('claim-button');
     if (claimButton) {
-        claimButton.addEventListener('click', () => {
-            const url = getAppStoreUrl();
-            window.open(url, '_blank');
+        // Function to open app store with native scheme on mobile, web on desktop
+        const openAppStore = () => {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
+            const isMobile = /android|iphone|ipad|ipod/i.test(userAgent);
+            
+            if (isMobile) {
+                // On mobile devices, use native URL scheme
+                // iOS/Android will open native app if available, otherwise fallback to web
+                const nativeUrl = getAppStoreUrl();
+                window.location.href = nativeUrl;
+            } else {
+                // On desktop, open web version directly in new tab
+                const webUrl = getWebAppStoreUrl();
+                window.open(webUrl, '_blank');
+            }
+        };
+        
+        claimButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAppStore();
         });
         claimButton.addEventListener('touchstart', (e) => {
             if (e.cancelable) {
                 e.preventDefault();
             }
-            const url = getAppStoreUrl();
-            window.open(url, '_blank');
+            openAppStore();
         });
     }
     
